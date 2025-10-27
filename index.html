@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="myApp">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React Web Component in AngularJS 1</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <script src="/dist/react-counter-lib.iife.js"></script>
+    <script src="/src/angular-app/app.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+        .container {
+            border: 2px solid #007bff;
+            padding: 20px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body ng-controller="MainController">
+
+    <h1>AngularJS 1 Host Application</h1>
+    <div class="container">
+        <h2>AngularJS Scope</h2>
+        <p>Count from React: <strong>{{ angularCount }}</strong></p>
+        <p>Change the initial count for the React component and it will re-render.</p>
+        <input type="number" ng-model="angularCount" />
+    </div>
+
+    <h2>React Web Component</h2>
+    <react-counter initial-count="{{ angularCount }}"></react-counter>
+
+</body>
+</html>
