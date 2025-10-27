@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 interface CounterProps {
   initialCount: number;
   angularCallback: (count: number) => void;
+  callAngularScopeFunction: (data: any) => void;
 }
 
-const Counter: React.FC<CounterProps> = ({ initialCount, angularCallback }) => {
+const Counter: React.FC<CounterProps> = ({ initialCount, angularCallback, callAngularScopeFunction }) => {
   const [count, setCount] = useState(initialCount);
 
   useEffect(() => {
@@ -30,6 +31,9 @@ const Counter: React.FC<CounterProps> = ({ initialCount, angularCallback }) => {
       <p>Current Count: {count}</p>
       <button onClick={handleIncrement}>Increment</button>
       <button onClick={handleDecrement}>Decrement</button>
+      <button onClick={() => callAngularScopeFunction({ message: "Updated from React Button!", reactCount: count })}>
+        Update Angular Directly
+      </button>
     </div>
   );
 };

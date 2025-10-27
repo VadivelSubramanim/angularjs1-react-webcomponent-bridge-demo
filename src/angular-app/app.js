@@ -7,8 +7,12 @@ app.controller('MainController', function($scope) {
         $scope.$apply(function() {
             $scope.angularCount = newCount;
         });
-        
+    };
 
+    $scope.updateAngularFromReact = function(data) {
+        console.log('Direct update from React:', data);
+        $scope.angularCount = data.reactCount;
+        $scope.lastMessage = data.message;
     };
 
     document.addEventListener('reactToAngularEvent', function(event) {

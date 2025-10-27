@@ -1,10 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import Counter from '../components/Counter';
+declare const angular: any; // Add AngularJS type declaration
 
 class CounterWebComponent extends HTMLElement {
     private reactRoot?: ReactDOM.Root;
     private currentAngularCallback: Function | null = null;
+    private angularScope: any = null;
 
     constructor() {
         super();
@@ -45,6 +47,21 @@ class CounterWebComponent extends HTMLElement {
             this.reactRoot = ReactDOM.createRoot(this.shadowRoot!);
         }
 
+        // Find the AngularJS scope
+        try {
+            const ngElement = this.closest('[ng-controller]');
+            if (ngElement) {
+                // @ts-ignore - angular is from AngularJS global
+                const scope = angular.element(ngElement).scope();
+                const rootScope = angular.element(document.querySelector('[ng-app]')).injector().get('$rootScope');
+                this.angularScope = { scope, rootScope };
+            } else {
+                console.error('No AngularJS controller found in ancestors');
+            }
+        } catch (error) {
+            console.error('Error finding AngularJS scope:', error);
+        }
+
         const initialCount = parseInt(this.getAttribute('initial-count') || '0', 10);
 
         const callAngularFunction = (newCount: number) => {
@@ -55,7 +72,24 @@ class CounterWebComponent extends HTMLElement {
 
         this.reactRoot.render(
             <React.StrictMode>
-                <Counter initialCount={initialCount} angularCallback={callAngularFunction} />
+                <Counter 
+                    initialCount={initialCount} 
+                    angularCallback={callAngularFunction}
+                    callAngularScopeFunction={(data) => {
+                        if (this.angularScope?.scope) {
+                            const { scope, rootScope } = this.angularScope;
+                            if (!scope.$$phase && !rootScope.$$phase) {
+                                scope.$apply(() => {
+                                    scope.updateAngularFromReact(data);
+                                });
+                            } else {
+                                scope.updateAngularFromReact(data);
+                            }
+                        } else {
+                            console.error('No AngularJS scope available');
+                        }
+                    }}
+                />
             </React.StrictMode>
         );
     }
@@ -66,6 +100,7 @@ class CounterWebComponent extends HTMLElement {
             this.reactRoot = undefined;
         }
         this.currentAngularCallback = null;
+        this.angularScope = null;
     }
 }
 
