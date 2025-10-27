@@ -40,8 +40,8 @@ const FormRenderer = () => {
       />
       <Form
         src={form}
-        onChange={(values) => {
-          onFormEvent(values);
+        onChange={(submission) => {
+          onFormEvent(submission.data);
         }}
       ></Form>
     </>
