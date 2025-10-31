@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Form } from '@formio/react';
+import type { Webform } from '@formio/js';
 import '@formio/js/dist/formio.embed.min.css';
 import '@formio/js/dist/formio.full.min.css';
 import { FormsProvider, useFormsContext } from './FormsProvider';
@@ -16,6 +17,31 @@ import { FormsProvider, useFormsContext } from './FormsProvider';
 const FormRenderer = () => {
   const [loading, setLoading] = useState(false);
   const { stakeholder, form, onFormEvent } = useFormsContext();
+  const formInstanceRef = useRef<Webform | null>(null);
+
+  const handleFormReady = useCallback((instance: Webform) => {
+    formInstanceRef.current = instance;
+    instance.nosubmit = true;
+  }, []);
+
+  const handleSubmit = useCallback(
+    (submission: any, saved?: boolean) => {
+      onFormEvent(submission.data);
+      if (!saved) {
+        formInstanceRef.current?.emit('submitDone');
+      }
+    },
+    [onFormEvent]
+  );
+
+  const handleChange = useCallback(
+    (value: any) => {
+      if (value?.data) {
+        onFormEvent(value.data);
+      }
+    },
+    [onFormEvent]
+  );
 
   useEffect(() => {
     setLoading(true);
@@ -40,9 +66,9 @@ const FormRenderer = () => {
       />
       <Form
         src={form}
-        onChange={(submission) => {
-          onFormEvent(submission.data);
-        }}
+        formReady={handleFormReady}
+        onSubmit={handleSubmit}
+        onChange={handleChange}
       ></Form>
     </>
   );
