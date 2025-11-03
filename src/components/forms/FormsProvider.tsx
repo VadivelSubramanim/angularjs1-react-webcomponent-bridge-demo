@@ -1,11 +1,11 @@
 import { FormType } from '@formio/react';
-import React, { createContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useState, useRef, useCallback } from 'react';
 
 type FormsContextType = {
   updateHostElement: (element: HTMLElement) => void;
   onFormEvent: (data: any) => void;
   onFormDirty: () => void;
-  resetDirty: () => void;  // New: Reset dirty state
+  resetDirty: () => void;
   setStakeholder: (stakeholder: string | null) => void;
   stakeholder: string | null;
   loading?: boolean;
@@ -364,80 +364,74 @@ export const FormsProvider: React.FC<
   );
   const [loading, setLoading] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const dirtyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastDirtyValueRef = useRef<boolean | null>(null);
 
-  const onFormDirty = () => {
-    if (isDirty) {
-      return;
-    }
+  const updateHostElement = useCallback((element: HTMLElement) => {
+    setHostElement(element);
+  }, []);
 
-    setIsDirty(true);
+  const setStakeholderInternal = useCallback((newStakeholder: string | null) => {
+    setStakeholder(newStakeholder);
+  }, []);
 
+  const onFormEvent = useCallback((data: any) => {
     if (hostElement) {
-      const event = new CustomEvent('form-dirty', {
-        bubbles: true,
-        composed: true,
-        detail: { dirty: true },
-      });
-      hostElement.dispatchEvent(event);
-    }
-  };
-
-  const resetDirty = () => {
-    if (!isDirty) {
-      return;
-    }
-
-    setIsDirty(false);
-
-    if (hostElement) {
-      const event = new CustomEvent('form-dirty', {
-        bubbles: true,
-        composed: true,
-        detail: { dirty: false },
-      });
-      hostElement.dispatchEvent(event);
-    }
-  };
-
-  const onFormEvent = (data: any) => {
-    // eslint-disable-next-line no-console
-    
-    if (hostElement) {
-      
       const event = new CustomEvent('onDataLoaded', {
         bubbles: true,
         composed: true,
-        detail: data, // i tuoi dati
+        detail: data,
       });
-
-      // 2. Lo "spara"
       hostElement.dispatchEvent(event);
     }
+  }, [hostElement]);
+
+  const dispatchDirtyEvent = useCallback((dirty: boolean) => {
+    if (hostElement && dirty !== lastDirtyValueRef.current) {
+      const event = new CustomEvent('form-dirty', {
+        bubbles: true,
+        composed: true,
+        detail: { dirty },
+      });
+      hostElement.dispatchEvent(event);
+      lastDirtyValueRef.current = dirty;
+    }
+  }, [hostElement]);
+
+  const onFormDirty = useCallback(() => {
+    // Debounce: Clear pending, set new timeout
+    if (dirtyTimeoutRef.current) clearTimeout(dirtyTimeoutRef.current);
+    dirtyTimeoutRef.current = setTimeout(() => {
+      if (!isDirty) {
+        setIsDirty(true);
+        dispatchDirtyEvent(true);
+      }
+    }, 150); // Throttle rapid "true" calls
+  }, [isDirty, dispatchDirtyEvent]);
+
+  const resetDirty = useCallback(() => {
+    if (dirtyTimeoutRef.current) clearTimeout(dirtyTimeoutRef.current);
+    if (isDirty) {
+      setIsDirty(false);
+      dispatchDirtyEvent(false);
+    }
+  }, [isDirty, dispatchDirtyEvent]);
+
+  // Expose to context
+  const contextValue: FormsContextType = {
+    updateHostElement,
+    onFormEvent,
+    onFormDirty,
+    resetDirty,
+    setStakeholder: setStakeholderInternal,
+    stakeholder,
+    loading,
+    form: formSchema,
+    isDirty,
   };
 
-  useEffect(() => {
-    // TODO: Load new form schema based on stakeholder change
-    setLoading(true);
-
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  }, [stakeholder]);
-
   return (
-    <FormsContext.Provider
-      value={{
-        updateHostElement: setHostElement,
-        onFormEvent,
-        onFormDirty,
-        resetDirty,  // Expose reset function
-        setStakeholder,
-        stakeholder,
-        loading,
-        form: formSchema,
-        isDirty,
-      }}
-    >
+    <FormsContext.Provider value={contextValue}>
       {props.children}
     </FormsContext.Provider>
   );
