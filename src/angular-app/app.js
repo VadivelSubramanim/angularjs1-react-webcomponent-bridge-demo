@@ -4,6 +4,7 @@ app.controller('MainController', function($scope) {
     $scope.angularCount = 10;
     $scope.stakeholder = 'default';
     $scope.formData = {};
+    $scope.isFormDirty = false;
 
     $scope.updateFromReact = function(newCount) {
         $scope.$apply(function() {
@@ -26,6 +27,13 @@ app.controller('MainController', function($scope) {
         console.log('Received form data:', event.detail);
         $scope.$apply(function() {
             $scope.formData = event.detail;
+        });
+    });
+
+    document.addEventListener('form-dirty', function(event) {
+        console.log('Received form-dirty event:', event.detail);
+        $scope.$apply(function() {
+            $scope.isFormDirty = event.detail.dirty;  // Handles true/false
         });
     });
 });

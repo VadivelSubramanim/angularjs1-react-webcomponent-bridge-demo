@@ -6,7 +6,6 @@ import '@formio/js/dist/formio.full.min.css';
 import { FormsProvider, useFormsContext } from './FormsProvider';
 
 /**
- *
  * It requires following css imports:
  * - @formio/js/dist/formio.embed.min.css
  * - @formio/js/dist/formio.full.min.css
@@ -16,31 +15,56 @@ import { FormsProvider, useFormsContext } from './FormsProvider';
  */
 const FormRenderer = () => {
   const [loading, setLoading] = useState(false);
-  const { stakeholder, form, onFormEvent } = useFormsContext();
+  const { stakeholder, form, onFormEvent, onFormDirty, isDirty, resetDirty } = useFormsContext();
   const formInstanceRef = useRef<Webform | null>(null);
+  const initialDataRef = useRef<any>(null);
 
   const handleFormReady = useCallback((instance: Webform) => {
     formInstanceRef.current = instance;
+    // No initialData set here: Let first onChange (load) handle it to capture defaults
     instance.nosubmit = true;
   }, []);
 
   const handleSubmit = useCallback(
     (submission: any, saved?: boolean) => {
       onFormEvent(submission.data);
+      // Reset dirty state after submit
+      resetDirty();
+      // Update initial baseline to submitted data (prevents post-submit onChange re-dirty)
+      initialDataRef.current = { ...submission.data };
       if (!saved) {
-        formInstanceRef.current?.emit('submitDone');
+        // formInstanceRef.current?.emit('submitDone');
+        // formInstanceRef.current?.element.querySelector('.alert-success')?.remove();
+        const formEl = formInstanceRef.current?.element;
+
+        setTimeout(() => {
+          const spinner = formEl?.querySelector('.formio-loading, .spinner-border, .glyphicon-refresh');
+          if (spinner) spinner.remove();
+        }, 2000);
       }
     },
-    [onFormEvent]
+    [onFormEvent, resetDirty]
   );
 
   const handleChange = useCallback(
     (value: any) => {
       if (value?.data) {
         onFormEvent(value.data);
+        if (!initialDataRef.current) {
+          // First onChange: Init baseline (load defaults), skip dirty
+          initialDataRef.current = { ...value.data };
+          return;
+        }
+        // Only mark dirty on actual change (post-init), and only once
+        if (
+          !isDirty &&
+          JSON.stringify(value.data) !== JSON.stringify(initialDataRef.current)
+        ) {
+          onFormDirty();
+        }
       }
     },
-    [onFormEvent]
+    [onFormEvent, onFormDirty, isDirty]
   );
 
   useEffect(() => {

@@ -4,10 +4,13 @@ import React, { createContext, useEffect, useState } from 'react';
 type FormsContextType = {
   updateHostElement: (element: HTMLElement) => void;
   onFormEvent: (data: any) => void;
+  onFormDirty: () => void;
+  resetDirty: () => void;  // New: Reset dirty state
   setStakeholder: (stakeholder: string | null) => void;
   stakeholder: string | null;
   loading?: boolean;
   form: FormType | null;
+  isDirty: boolean;
 };
 
 const FormsContext = createContext<FormsContextType | undefined>(undefined);
@@ -360,10 +363,44 @@ export const FormsProvider: React.FC<
     props.stakeholder || null
   );
   const [loading, setLoading] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  const onFormDirty = () => {
+    if (isDirty) {
+      return;
+    }
+
+    setIsDirty(true);
+
+    if (hostElement) {
+      const event = new CustomEvent('form-dirty', {
+        bubbles: true,
+        composed: true,
+        detail: { dirty: true },
+      });
+      hostElement.dispatchEvent(event);
+    }
+  };
+
+  const resetDirty = () => {
+    if (!isDirty) {
+      return;
+    }
+
+    setIsDirty(false);
+
+    if (hostElement) {
+      const event = new CustomEvent('form-dirty', {
+        bubbles: true,
+        composed: true,
+        detail: { dirty: false },
+      });
+      hostElement.dispatchEvent(event);
+    }
+  };
 
   const onFormEvent = (data: any) => {
     // eslint-disable-next-line no-console
-    console.log('onFormEvent called with data:', data);
     
     if (hostElement) {
       
@@ -392,10 +429,13 @@ export const FormsProvider: React.FC<
       value={{
         updateHostElement: setHostElement,
         onFormEvent,
+        onFormDirty,
+        resetDirty,  // Expose reset function
         setStakeholder,
         stakeholder,
         loading,
         form: formSchema,
+        isDirty,
       }}
     >
       {props.children}
